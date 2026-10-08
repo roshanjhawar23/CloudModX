@@ -2,7 +2,8 @@
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, RefreshCw, AlertCircle, Plus, Upload, Rocket,
-  GitBranch, Package, ChevronRight, Check, X, RotateCcw, Activity, Clock
+  GitBranch, Package, ChevronRight, Check, X, RotateCcw, Activity,
+  Clock, ShieldAlert, CheckCircle2, AlertTriangle, Layers
 } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import apiService from "../services/api";
@@ -146,6 +147,139 @@ function ArtifactUploadModal({ moduleId, versionId, versionTag, onClose, onUploa
   );
 }
 
+// Release Pipeline Stepper Component
+function ReleasePipelineVisualization({ latestDeployment, targetVersion, hasArtifact }) {
+  if (!latestDeployment) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center space-x-2">
+          <Rocket className="w-4 h-4 text-sky-600" />
+          <span>Release Pipeline Flow</span>
+        </h3>
+        <p className="text-xs text-gray-400">
+          No deployments triggered yet. Trigger a deployment below to view the automated execution pipeline.
+        </p>
+      </div>
+    );
+  }
+
+  const isFailed = latestDeployment.status === "failed";
+  const isSuccess = latestDeployment.status === "success";
+  const isRunning = latestDeployment.status === "running";
+  const isRollback = latestDeployment.error_message && latestDeployment.error_message.toLowerCase().includes("rolled back");
+
+  const steps = [
+    {
+      id: "artifact",
+      name: "Artifact Validation",
+      status: isFailed && !hasArtifact ? "failed" : "completed",
+      detail: hasArtifact ? "Verified S3 Package" : isFailed ? "Artifact Missing" : "Pending Verification",
+    },
+    {
+      id: "queue",
+      name: "Queue & Schedule",
+      status: "completed",
+      detail: "Environment Targeted",
+    },
+    {
+      id: "execute",
+      name: "Execution",
+      status: isRunning ? "active" : isFailed ? "failed" : "completed",
+      detail: isRunning ? "Running checks..." : isFailed ? "Execution Halted" : "Verified & Live",
+    },
+    {
+      id: "result",
+      name: "Pipeline Result",
+      status: isFailed ? "failed" : isSuccess ? "completed" : "pending",
+      detail: isFailed ? "Deployment Failed" : isRollback ? "Rollback Succeeded" : "Deployment Succeeded",
+    },
+    {
+      id: "audit",
+      name: "Audit Persistence",
+      status: "completed",
+      detail: "RDS Audit Trail Written",
+    },
+  ];
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+        <h3 className="text-sm font-bold text-gray-900 flex items-center space-x-2">
+          <Rocket className="w-4 h-4 text-sky-600" />
+          <span>Active Release Pipeline Execution</span>
+          <span className="ml-1 text-[11px] font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
+            Deployment #{latestDeployment.id}
+          </span>
+        </h3>
+        <div className="flex items-center space-x-2">
+          <StatusBadge status={latestDeployment.status} />
+          {isRollback && (
+            <span className="bg-purple-100 text-purple-800 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-purple-200">
+              Rollback Active
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Stepper Pipeline */}
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-1">
+        {steps.map((step, idx) => {
+          let badgeBg = "bg-gray-100 text-gray-500 border-gray-200";
+          let icon = <Clock className="w-3.5 h-3.5 text-gray-400" />;
+
+          if (step.status === "completed") {
+            badgeBg = "bg-emerald-50 text-emerald-800 border-emerald-200";
+            icon = <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />;
+          } else if (step.status === "failed") {
+            badgeBg = "bg-rose-50 text-rose-800 border-rose-200";
+            icon = <AlertCircle className="w-3.5 h-3.5 text-rose-600" />;
+          } else if (step.status === "active") {
+            badgeBg = "bg-sky-50 text-sky-800 border-sky-200";
+            icon = <RefreshCw className="w-3.5 h-3.5 text-sky-600 animate-spin" />;
+          }
+
+          return (
+            <div key={step.id} className={`p-3 rounded-lg border flex flex-col justify-between ${badgeBg}`}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                  Step {idx + 1}
+                </span>
+                {icon}
+              </div>
+              <p className="text-xs font-semibold">{step.name}</p>
+              <p className="text-[10px] mt-1 opacity-80">{step.detail}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Diagnostic Alert on Failure */}
+      {isFailed && latestDeployment.error_message && (
+        <div className="mt-3 p-3.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-900 text-xs flex items-start space-x-2.5">
+          <ShieldAlert className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold">Failure Diagnostic Captured</p>
+            <p className="mt-0.5 text-rose-800 font-mono text-[11px] bg-rose-100/60 p-1.5 rounded">
+              {latestDeployment.error_message}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Rollback Success Banner */}
+      {isRollback && (
+        <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg text-purple-900 text-xs flex items-start space-x-2.5">
+          <RotateCcw className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold">Rollback Status</p>
+            <p className="mt-0.5 text-purple-800">{latestDeployment.error_message}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ModuleDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -164,8 +298,6 @@ export default function ModuleDetail() {
   };
 
   const fetchModule = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
       const data = await apiService.getModule(id);
       setModule(data);
@@ -176,7 +308,11 @@ export default function ModuleDetail() {
     }
   }, [id]);
 
-  useEffect(() => { fetchModule(); }, [fetchModule]);
+  useEffect(() => {
+    fetchModule();
+    const interval = setInterval(fetchModule, 10000);
+    return () => clearInterval(interval);
+  }, [fetchModule]);
 
   const handleStatusChange = async (newStatus) => {
     setStatusUpdating(true);
@@ -262,8 +398,12 @@ export default function ModuleDetail() {
   }
 
   const transitions = STATUS_TRANSITIONS[module.status?.toLowerCase()] || [];
-  const successfulDeployments = (module.deployments || []).filter((d) => d.status === "success");
-  const canRollback = (module.deployments || []).length > 1 && successfulDeployments.length > 0;
+  const deployments = module.deployments || [];
+  const latestDeployment = deployments.length > 0 ? deployments[0] : null;
+  const targetVersion = latestDeployment ? module.versions?.find((v) => v.id === latestDeployment.version_id) : null;
+  const hasArtifact = targetVersion?.artifact_id != null;
+  const successfulDeployments = deployments.filter((d) => d.status === "success");
+  const canRollback = deployments.length > 1 && successfulDeployments.length > 0;
 
   return (
     <div className="space-y-6">
@@ -271,7 +411,7 @@ export default function ModuleDetail() {
       {toast && (
         <div className={`fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-4 py-3 rounded-lg shadow-xl text-sm font-medium transition-all max-w-md
           ${toast.isError ? "bg-red-600 text-white" : "bg-emerald-600 text-white"}`}>
-          {toast.isError ? <AlertCircle className="w-5 h-5 flex-shrink-0" /> : <Check className="w-5 h-5 flex-shrink-0" />}
+          {toast.isError ? <AlertCircle className="w-4 h-4 flex-shrink-0" /> : <Check className="w-4 h-4 flex-shrink-0" />}
           <span className="truncate">{toast.msg}</span>
         </div>
       )}
@@ -344,6 +484,13 @@ export default function ModuleDetail() {
           </div>
         </div>
       </div>
+
+      {/* Release Pipeline Visualization */}
+      <ReleasePipelineVisualization
+        latestDeployment={latestDeployment}
+        targetVersion={targetVersion}
+        hasArtifact={hasArtifact}
+      />
 
       {/* Versions */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">

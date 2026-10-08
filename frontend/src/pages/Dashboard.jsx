@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Layers, Server, CheckCircle2, AlertCircle, RefreshCw, Cpu, Database,
@@ -205,16 +205,18 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center space-x-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Phase 11 — Live Features</span>
+            <span>Platform Core Capabilities</span>
           </h3>
           <ul className="space-y-2 text-xs text-gray-600">
             {[
               "Module registry with full lifecycle (Draft → Review → Active → Archived)",
-              "Version tracking with changelog",
-              "Artifact upload (S3 / local fallback)",
-              "Deployment records with environment targeting",
-              "Audit log for every lifecycle action",
-              "Real-time dashboard with health + activity feed",
+              "Semantic versioning with release notes & changelogs",
+              "Multi-part binary package upload streamed to Amazon S3",
+              "Deterministic deployment engine (Pending → Running → Success/Failed)",
+              "Actionable failure capture with granular error diagnostics",
+              "1-click instant rollback restoring previous verified stable releases",
+              "Tamper-evident audit trail persisted in Amazon RDS PostgreSQL",
+              "Real-time operational observability with Amazon CloudWatch alarms",
             ].map((f) => (
               <li key={f}>✅ {f}</li>
             ))}

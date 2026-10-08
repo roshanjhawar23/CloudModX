@@ -10,7 +10,7 @@ export default function NotFound() {
       </div>
       <h2 className="text-2xl font-bold text-gray-900">404 - Page Not Found</h2>
       <p className="text-gray-500 text-sm mt-2 max-w-md">
-        The requested page does not exist in the CloudModX local dashboard scaffold.
+        The requested page does not exist in the CloudModX platform.
       </p>
       <Link
         to="/"

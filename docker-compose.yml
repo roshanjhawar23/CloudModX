@@ -1,0 +1,66 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: cloudmodx_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cloudmodx_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cloudmodx_password}
+      POSTGRES_DB: ${POSTGRES_DB:-cloudmodx_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cloudmodx_user} -d ${POSTGRES_DB:-cloudmodx_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cloudmodx_network
+
+  # FastAPI Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cloudmodx_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: development
+      SECRET_KEY: ${SECRET_KEY:-local-dev-secret-key-replace-in-prod}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://cloudmodx_user:cloudmodx_password@127.0.0.1:5433/cloudmodx_db}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - cloudmodx_network
+
+  # React Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cloudmodx_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - cloudmodx_network
+
+networks:
+  cloudmodx_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

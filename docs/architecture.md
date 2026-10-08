@@ -10,7 +10,7 @@ CloudModX is a lightweight AWS-native Internal Developer Platform (IDP) designed
                                   TCP 80 (HTTP)
                                      v
                        +---------------------------+
-                       |   Amazon EC2 (t3.micro)   |
+                       |   Amazon EC2 (t3.small)   |
                        |                           |
                        |   +-------------------+   |
                        |   |   React + Nginx   |   |

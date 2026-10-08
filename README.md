@@ -5,6 +5,7 @@
 [![Backend Tests](https://img.shields.io/badge/pytest-20%20passed-emerald)]()
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
 [![AWS Region](https://img.shields.io/badge/AWS%20Region-ap--south--1-orange)]()
+[![EC2](https://img.shields.io/badge/Amazon%20EC2-t3.small-blue)]()
 [![Database](https://img.shields.io/badge/Amazon%20RDS-PostgreSQL%2015-blue)]()
 
 ---
@@ -15,7 +16,7 @@ CloudModX is an Internal Developer Platform designed to streamline how cloud-nat
 
 ---
 
-## 2. Architecture & AWS Services
+## 2. Architecture & AWS Specifications
 
 ```
                            [ Web Browser / Client ]
@@ -23,7 +24,7 @@ CloudModX is an Internal Developer Platform designed to streamline how cloud-nat
                                    TCP 80 (HTTP)
                                       v
                         +---------------------------+
-                        |   Amazon EC2 (t3.micro)   |
+                        |   Amazon EC2 (t3.small)   |
                         |                           |
                         |   +-------------------+   |
                         |   |   React + Nginx   |   |
@@ -52,9 +53,9 @@ CloudModX is an Internal Developer Platform designed to streamline how cloud-nat
 | Service | Role in CloudModX | Configuration Details |
 |:---|:---|:---|
 | **Amazon VPC** | Network Isolation | Custom VPC `10.0.0.0/16` across 2 Availability Zones (`ap-south-1a`, `ap-south-1b`). |
-| **Amazon EC2** | Application Host | `t3.micro` running Docker container stack (Nginx + FastAPI). Managed via AWS SSM. |
-| **Amazon RDS** | Production Relational DB | `db.t4g.micro` PostgreSQL 15, Single-AZ, encrypted storage, private subnets. |
-| **Amazon S3** | Package Storage | Versioned bucket for multi-part tarball/zip build artifacts. |
+| **Amazon EC2** | Application Host | `t3.small` (2 vCPU, 2 GB RAM, 20 GB GP3 encrypted root) running Docker container stack (Nginx + FastAPI). Managed via AWS SSM. |
+| **Amazon RDS** | Production Relational DB | `db.t4g.micro` PostgreSQL 15, Single-AZ, 20 GB GP3 storage (KMS encrypted), private subnets only. |
+| **Amazon S3** | Package Storage | Bucket for versioned multi-part tarball/zip build artifacts. |
 | **AWS IAM** | Identity & Access | Least-privilege EC2 Instance Role for S3 and CloudWatch (no static keys). |
 | **CloudWatch** | Observability | Unified logging group (`/cloudmodx/development/application`) + CPU/Storage/Connection alarms. |
 
@@ -90,9 +91,9 @@ CloudModX is an Internal Developer Platform designed to streamline how cloud-nat
 ## 5. Cost-Conscious Design
 
 CloudModX is optimized for cost efficiency without sacrificing cloud-native architecture principles:
-- **Zero NAT Gateways**: Saves ~$32/month per gateway by utilizing public EC2 placement with private RDS routing.
+- **Zero NAT Gateways**: Avoids managed gateway overhead by placing the EC2 application host in the public subnet while keeping RDS isolated in private subnets with direct internal routing.
 - **Zero ALB/ELB overhead**: Nginx reverse proxy running directly on EC2 handles edge routing.
-- **ARM64 Graviton RDS**: `db.t4g.micro` provides high performance with lower cost.
+- **ARM64 Graviton RDS**: `db.t4g.micro` provides high performance with lower compute cost.
 - **Single-AZ Development Tier**: RDS and EC2 provisioned in Single-AZ with automated KMS encryption.
 
 ---

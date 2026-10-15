@@ -3,23 +3,36 @@ updates:
   - package-ecosystem: pip
     directory: /backend
     schedule:
-      interval: weekly
+      interval: monthly
+    # Only open a PR when a new release falls outside the allowed range
+    versioning-strategy: increase-if-necessary
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
-      python-minor-and-patch:
-        update-types: [minor, patch]
+      python-deps:
+        patterns: ["*"]
 
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
-      npm-minor-and-patch:
-        update-types: [minor, patch]
+      npm-deps:
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
 
   - package-ecosystem: docker
     directories:
@@ -27,6 +40,9 @@ updates:
       - /frontend
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: terraform
     directory: /infrastructure/terraform

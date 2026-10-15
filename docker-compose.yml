@@ -36,6 +36,9 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       SECRET_KEY: ${SECRET_KEY:-cloudmodx-local-dev-secret-key-replace-in-production-32chars}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://cloudmodx_user:cloudmodx_password@db:5432/cloudmodx_db}
+      ARTIFACT_BUCKET_NAME: ${ARTIFACT_BUCKET_NAME:-}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      SQL_ECHO: ${SQL_ECHO:-false}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 15s

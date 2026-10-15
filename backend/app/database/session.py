@@ -24,7 +24,7 @@ def init_engine():
                 db_url,
                 pool_pre_ping=True,
                 pool_recycle=300,
-                echo=settings.ENVIRONMENT == "development",
+                echo=settings.SQL_ECHO,
             )
             SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
             logger.info("SQLAlchemy database engine initialized successfully with psycopg2 driver.")

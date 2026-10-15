@@ -12,14 +12,15 @@ class DeploymentBase(BaseModel):
 class DeploymentCreate(BaseModel):
     module_id: int
     version_id: int
-    environment: str = "production"
+    # None -> use the module's own environment (same rule as rollback)
+    environment: Optional[str] = None
     deployed_by: Optional[int] = None
     simulate_failure: Optional[bool] = False
 
 
 class RollbackRequest(BaseModel):
     module_id: int
-    environment: Optional[str] = "production"
+    environment: Optional[str] = None
     deployed_by: Optional[int] = None
 
 

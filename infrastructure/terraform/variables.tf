@@ -109,3 +109,9 @@ variable "db_backup_retention_period" {
   type        = number
   default     = 0
 }
+
+variable "artifact_bucket_force_destroy" {
+  description = "Allow terraform destroy to delete the artifact bucket even if it still contains objects and old versions. Set to true before tearing down a demo."
+  type        = bool
+  default     = false
+}

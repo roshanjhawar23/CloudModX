@@ -4,8 +4,10 @@
 resource "aws_s3_bucket" "artifacts" {
   bucket_prefix = "${var.artifact_bucket_prefix}-${var.environment}-"
 
-  # Prevent accidental destruction of artifact storage
-  force_destroy = false
+  # false by default to prevent accidental loss of artifacts.
+  # Set var.artifact_bucket_force_destroy = true before `terraform destroy`
+  # so Terraform can delete the bucket even when it still holds objects/versions.
+  force_destroy = var.artifact_bucket_force_destroy
 
   tags = {
     Name        = "${var.project_name}-Artifacts-${var.environment}"

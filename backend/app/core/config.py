@@ -20,7 +20,11 @@ class Settings(BaseSettings):
 
     # AWS & S3 Settings
     AWS_REGION: str = "ap-south-1"
-    ARTIFACT_BUCKET_NAME: str = "cloudmodx-artifacts-development-7e20711b318423260d00ea711f"
+    # Leave empty to store artifacts on local disk (default for local development).
+    # Set to your own bucket (Terraform output `artifact_bucket_name`) to use Amazon S3.
+    ARTIFACT_BUCKET_NAME: str = ""
+    # Set to true to print every SQL statement (very noisy)
+    SQL_ECHO: bool = False
     LOCAL_STORAGE_PATH: str = "/tmp/cloudmodx-artifacts"
 
     # CORS Settings

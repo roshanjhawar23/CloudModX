@@ -35,7 +35,7 @@ class S3Service:
         checksum = hashlib.sha256(file_content).hexdigest()
         s3_key = f"modules/{module_id}/v{version}/{filename}"
 
-        if self.s3_client and self.bucket_name:
+        if self.bucket_name and self.s3_client:
             try:
                 self.s3_client.put_object(
                     Bucket=self.bucket_name,

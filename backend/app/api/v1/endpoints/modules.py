@@ -1,5 +1,5 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Body, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -224,9 +224,17 @@ async def upload_version_artifact(
 def rollback_module(
     module_id: int,
     environment: Optional[str] = None,
+    body: Optional[dict] = Body(default=None),
     db: Session = Depends(get_db),
 ):
-    """Direct module rollback trigger to previous stable version."""
+    """Direct module rollback trigger to previous stable version.
+
+    The environment can be given as a query parameter (?environment=...) or in a
+    JSON body ({"environment": "..."}). If neither is given, the module's own
+    environment is used, which matches the default used by POST /deployments.
+    """
     from app.api.v1.endpoints.deployments import rollback_deployment
     from app.schemas.deployment import RollbackRequest
+    if environment is None and body:
+        environment = body.get("environment")
     return rollback_deployment(RollbackRequest(module_id=module_id, environment=environment), db)

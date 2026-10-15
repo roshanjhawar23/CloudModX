@@ -156,3 +156,50 @@ def test_rollback_no_history_fails(client, db_session):
     rb_res = client.post("/api/v1/deployments/rollback", json={"module_id": mod.id, "environment": "production"})
     assert rb_res.status_code == 400
     assert "no deployment history" in rb_res.json()["detail"].lower()
+
+
+def test_rollback_works_with_default_environment(client, db_session):
+    """Regression: deploy and rollback with no environment given must use the same
+    environment (the module's own), so rollback finds the deployment history."""
+    user = User(name="Ops", email="ops-default-env@college.edu", role="admin")
+    db_session.add(user)
+    db_session.commit()
+
+    mod = Module(
+        name="Default Env Service",
+        owner_id=user.id,
+        technology="Python",
+        architecture="Microservice",
+        environment="development",
+        status="draft",
+    )
+    db_session.add(mod)
+    db_session.commit()
+
+    good = ModuleVersion(module_id=mod.id, version="1.0.0")
+    bad = ModuleVersion(module_id=mod.id, version="1.1.0")
+    db_session.add_all([good, bad])
+    db_session.commit()
+
+    client.post(
+        f"/api/v1/modules/{mod.id}/versions/{good.id}/artifact",
+        files={"file": ("svc-1.0.0.tar.gz", BytesIO(b"ok"), "application/gzip")},
+    )
+
+    # No "environment" in either request
+    ok = client.post("/api/v1/deployments", json={"module_id": mod.id, "version_id": good.id})
+    assert ok.status_code == 201
+    assert ok.json()["environment"] == "development"
+
+    failed = client.post("/api/v1/deployments", json={"module_id": mod.id, "version_id": bad.id})
+    assert failed.json()["status"] == "failed"
+
+    rb = client.post(f"/api/v1/modules/{mod.id}/rollback")
+    assert rb.status_code == 201, rb.text
+    assert rb.json()["version_id"] == good.id
+    assert rb.json()["environment"] == "development"
+
+    # Environment passed in a JSON body (what the web UI sends) is read, not ignored
+    rb2 = client.post(f"/api/v1/modules/{mod.id}/rollback", json={"environment": "staging"})
+    assert rb2.status_code == 400
+    assert "staging" in rb2.json()["detail"]

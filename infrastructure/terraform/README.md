@@ -1,51 +1,73 @@
 # CloudModX Infrastructure — Terraform
 
-This directory contains the HashiCorp Terraform configuration for provisioning CloudModX cloud-native infrastructure on Amazon Web Services (AWS).
+This directory contains the Terraform configuration that provisions CloudModX infrastructure on AWS. For step-by-step provisioning, application deployment and teardown, see **Section 8 of the [main README](../../README.md#8-aws-deployment-cost--teardown)**.
 
 ---
 
-## Current Status: Phase 8 (EC2 + Docker Host Deployment — Hardened)
+## Requirements
 
-- **Terraform Version Requirement:** `>= 1.16`
-- **AWS Provider:** `hashicorp/aws` constraint `~> 6.0`
-- **Target AWS Region:** `ap-south-1` (Mumbai)
-- **Authentication:** Standard AWS CLI credential resolution (`~/.aws/credentials`, `~/.aws/config`, or environment variables). No hardcoded credentials.
+- **Terraform:** `>= 1.16` (see `versions.tf`)
+- **AWS Provider:** `hashicorp/aws` `~> 6.0`
+- **Default region:** `ap-south-1` (Mumbai), configurable with `aws_region`
+- **Authentication:** standard AWS CLI credential resolution (`~/.aws/credentials`, `~/.aws/config`, or environment variables). No credentials are stored in this repository.
 
 ---
 
 ## Managed AWS Resources
 
-### 1. EC2 Docker Application Host (`ec2.tf`)
-- **Instance Type:** `t3.small` (2 vCPU, 2 GiB RAM, cost-effective for Docker runtime and container builds)
-- **Placement:** Public Subnet A (`subnet-0300a2f74a6d4850f` / `ap-south-1a`) with public IPv4 address
-- **AMI:** Latest Amazon Linux 2023 (`al2023-ami-2023.*-x86_64`)
-- **Storage:** 20 GiB GP3 encrypted root volume
-- **Terminal Access:** Zero-trust AWS Systems Manager Session Manager (SSH port 22 closed)
-- **Bootstrap (User Data):**
-  - Installs Docker Engine, Git, curl, jq
-  - Installs Docker Compose v2 CLI plugin
-  - Enables and starts `docker.service`
-  - Adds `ec2-user` to `docker` group
-  - Sets up `/opt/cloudmodx` working directory
-- **IAM Instance Profile:**
-  - `AmazonSSMManagedInstanceCore` for secure browser/CLI terminal access via AWS Systems Manager Session Manager
-  - Scoped S3 policy pinned to the exact Terraform S3 bucket ARN (`aws_s3_bucket.artifacts.arn`)
+### 1. VPC & Networking (`vpc.tf`)
+- VPC `10.0.0.0/16` with DNS hostnames and DNS resolution enabled
+- 2 public subnets (`10.0.1.0/24`, `10.0.2.0/24`) and 2 private subnets (`10.0.11.0/24`, `10.0.12.0/24`) in the first two Availability Zones of the region
+- Internet Gateway with a default route on the public route table
+- No NAT Gateway (no hourly cost)
 
-### 2. Security Group (`aws_security_group.app_server`)
-- **Port 22 (SSH):** **Disabled/Removed** — all administrative operations use AWS SSM Session Manager
-- **Port 80 (HTTP):** Public web traffic (`0.0.0.0/0`)
-- **Port 3000 (React UI):** Temporary demo direct access (`var.app_access_cidr`)
-- **Port 8000 (FastAPI):** Temporary demo direct API access (`var.app_access_cidr`)
-- **All Egress:** Outbound access for package updates, Docker Hub image pulls, and AWS API calls
+### 2. EC2 Docker Host (`ec2.tf`)
+- `t3.small` (2 vCPU, 2 GiB RAM) in public subnet A with a public IPv4 address
+- Latest Amazon Linux 2023 x86_64 AMI
+- 20 GiB encrypted GP3 root volume
+- User data installs Docker Engine, Docker Compose v2, Git and jq, adds `ec2-user` to the `docker` group, and creates `/opt/cloudmodx`
+- **Security group:** inbound TCP 80 from anywhere only; SSH (22) is not open; all outbound allowed
+- **IAM instance profile:** `AmazonSSMManagedInstanceCore` (Session Manager access) and an inline policy limited to the artifact bucket (`ListBucket`, `GetBucketLocation`, `GetObject`, `PutObject`, `DeleteObject`)
 
-### 3. VPC & Networking (`vpc.tf`)
-- **VPC CIDR:** `10.0.0.0/16` with DNS hostnames and DNS resolution enabled
-- **Subnets:** 2 Public subnets (`10.0.1.0/24`, `10.0.2.0/24`) and 2 Private subnets (`10.0.11.0/24`, `10.0.12.0/24`) across `ap-south-1a` and `ap-south-1b`
-- **Internet Gateway:** Attached to VPC with default route on public route table
-- **NAT Gateway:** None (zero hourly cost)
+### 3. RDS PostgreSQL (`rds.tf`)
+- PostgreSQL 15 on `db.t4g.micro`, Single-AZ, 20 GB encrypted GP3, storage autoscaling disabled
+- DB subnet group across both private subnets; `publicly_accessible = false`
+- Security group allows TCP 5432 only from the EC2 security group
+- Demo-oriented defaults: `backup_retention_period = 0`, `skip_final_snapshot = true`, `deletion_protection = false`
+- Master password comes from `db_password` (no default; supply via `terraform.tfvars` or `TF_VAR_db_password`)
 
 ### 4. S3 Artifact Storage (`s3.tf`)
-- **Bucket:** Dedicated S3 bucket for module artifacts with SSE-S3 encryption, versioning, public access block, and multipart cleanup lifecycle rules
+- Bucket named `cloudmodx-artifacts-<environment>-<random suffix>`
+- SSE-S3 encryption, versioning, full public access block, BucketOwnerEnforced ownership, and a lifecycle rule that aborts incomplete multipart uploads after 7 days
+- `force_destroy` is controlled by `artifact_bucket_force_destroy` (default `false`); set it to `true` before `terraform destroy` if the bucket contains objects
+
+### 5. Monitoring (`monitoring.tf`)
+- CloudWatch log group `/cloudmodx/<environment>/application` with 7-day retention
+- `CloudWatchAgentServerPolicy` attached to the EC2 role (the agent itself is not installed by user data)
+- Alarms: EC2 CPU ≥ 80%, EC2 status check failed, RDS CPU ≥ 80%, RDS free storage ≤ 2 GB, RDS connections ≥ 40 (no SNS notification target is configured)
+
+---
+
+## Input Variables
+
+| Variable | Default | Notes |
+|:---|:---|:---|
+| `db_password` | *(required)* | 12+ letters and digits recommended; avoid `/ @ " # % :` and spaces |
+| `aws_region` | `ap-south-1` | |
+| `environment` | `development` | Used in names and tags |
+| `instance_type` | `t3.small` | |
+| `root_volume_size` | `20` | GB |
+| `db_instance_class` | `db.t4g.micro` | |
+| `db_allocated_storage` | `20` | GB |
+| `db_backup_retention_period` | `0` | Days; `0` disables automated backups |
+| `artifact_bucket_force_destroy` | `false` | Set `true` before teardown |
+| `key_name` | `""` | Optional EC2 key pair; not needed with SSM |
+
+See `variables.tf` for the full list (CIDR ranges, names, prefixes).
+
+## Useful Outputs
+
+`ec2_instance_id`, `ec2_public_ip`, `rds_address`, `rds_endpoint`, `artifact_bucket_name`, `cloudwatch_log_group_name` — see `outputs.tf` for all outputs.
 
 ---
 
@@ -53,32 +75,31 @@ This directory contains the HashiCorp Terraform configuration for provisioning C
 
 ```text
 infrastructure/terraform/
-├── .terraform.lock.hcl   # Provider dependency lock file (tracked in git)
-├── versions.tf           # Terraform core and provider version requirements
-├── provider.tf           # AWS provider configuration and default tags
-├── variables.tf          # Input variable definitions (region, environment, CIDRs, EC2)
-├── ec2.tf                # EC2 instance, security group, IAM role/profile, Docker bootstrap
-├── vpc.tf                # VPC, Subnets, IGW, Route Tables, and Associations
-├── s3.tf                 # S3 bucket, encryption, versioning, and security policies
-├── outputs.tf            # Output definitions (VPC ID, subnets, EC2 IP, S3 ARN)
-└── README.md             # This documentation
+├── .terraform.lock.hcl        # Provider dependency lock file (tracked in git)
+├── versions.tf                # Terraform core and provider version requirements
+├── provider.tf                # AWS provider configuration and default tags
+├── variables.tf               # Input variables
+├── vpc.tf                     # VPC, subnets, IGW, route tables
+├── ec2.tf                     # EC2 instance, security group, IAM role/profile, Docker bootstrap
+├── rds.tf                     # RDS PostgreSQL, DB subnet group, RDS security group
+├── s3.tf                      # Artifact bucket, encryption, versioning, lifecycle
+├── monitoring.tf              # CloudWatch log group and alarms
+├── outputs.tf                 # Output values
+├── terraform.tfvars.example   # Copy to terraform.tfvars (gitignored) and set db_password
+└── README.md                  # This file
 ```
 
 ---
 
 ## Workflow Commands
 
-### 1. Format configuration
 ```bash
-terraform fmt
-```
+terraform fmt        # format files
+terraform validate   # check configuration
+terraform plan       # preview changes
+terraform apply      # create/update resources
 
-### 2. Validate syntax and configuration
-```bash
-terraform validate
-```
-
-### 3. Plan infrastructure changes
-```bash
-terraform plan
+# Teardown (empties the artifact bucket first if needed)
+terraform apply -var="artifact_bucket_force_destroy=true"
+terraform destroy
 ```

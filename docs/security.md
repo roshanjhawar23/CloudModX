@@ -15,4 +15,4 @@ CloudModX implements defense-in-depth principles tailored for AWS cloud native o
 
 ## 3. Immutability & Audit Trail
 - **Checksum Verification**: Release artifacts generate SHA-256 digests upon S3 ingestion.
-- **Tamper-Evident Audit Logging**: Every administrative action (module creation, status transition, artifact upload, deployment execution, failure diagnostic, and rollback) automatically writes immutable audit records to PostgreSQL.
+- **Tamper-Evident Audit Logging**: Every administrative action (module creation, status transition, artifact upload, deployment execution, failure diagnostic, and rollback) automatically writes an audit record to PostgreSQL. (Records are append-only by application convention; the database does not yet block UPDATE/DELETE on the table.)

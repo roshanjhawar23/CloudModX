@@ -1,0 +1,4 @@
+# Development and test dependencies (install with: pip install -r requirements-dev.txt)
+-r requirements.txt
+httpx2>=2.0,<3.0
+ruff==0.17.1

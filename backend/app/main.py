@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.schemas.health import HealthResponse
-from app.database.session import engine, check_db_health
+from app.database.session import check_db_health
 
 # Configure Logging
 logging.basicConfig(

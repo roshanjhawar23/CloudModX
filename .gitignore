@@ -68,3 +68,32 @@ cloudmodx-deploy.tar.gz
 *.swo
 .DS_Store
 Thumbs.db
+
+# Keys, certificates & credential files
+*.pem
+*.key
+*.p12
+*.pfx
+credentials
+credentials.json
+secrets.json
+.aws/
+
+# Terraform extras
+crash.log
+crash.*.log
+.terraform.tfstate.lock.info
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Tooling caches & logs
+.ruff_cache/
+.mypy_cache/
+*.log
+
+# Keep example env files tracked
+!.env.example
+!backend/.env.example
+!frontend/.env.example

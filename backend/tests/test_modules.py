@@ -1,7 +1,5 @@
-import pytest
 from app.models.user import User
 from app.models.module import Module
-from app.models.module_version import ModuleVersion
 from app.models.audit_log import AuditLog
 
 

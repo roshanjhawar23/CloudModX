@@ -1,6 +1,4 @@
-import pytest
 from unittest.mock import patch
-from app.main import app
 
 
 def test_health_endpoint_healthy(client):

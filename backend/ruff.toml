@@ -1,0 +1,7 @@
+# Ruff lint configuration (run from backend/: `ruff check .`)
+target-version = "py311"
+line-length = 120
+
+[lint]
+# E9: syntax errors; F: pyflakes (undefined names, unused imports/variables)
+select = ["E9", "F"]

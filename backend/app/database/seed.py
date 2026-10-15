@@ -11,7 +11,6 @@ import sys
 import logging
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
-from app.core.config import settings
 from app.database.session import SessionLocal, engine, Base
 from app.models.user import User
 from app.models.module import Module

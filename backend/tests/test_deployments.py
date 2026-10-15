@@ -1,10 +1,7 @@
-﻿import pytest
-from io import BytesIO
+﻿from io import BytesIO
 from app.models.user import User
 from app.models.module import Module
 from app.models.module_version import ModuleVersion
-from app.models.artifact import Artifact
-from app.models.audit_log import AuditLog
 
 
 def test_deployment_success_with_artifact(client, db_session):

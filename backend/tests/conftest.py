@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 # Add backend directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import app.models  # Register all models with Base.metadata
+import app.models  # noqa: F401  (registers all models with Base.metadata)
 from app.database.session import Base, get_db
 from app.main import app as fastapi_app
 

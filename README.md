@@ -2,6 +2,8 @@
 
 > Lightweight AWS-native Internal Developer Platform (IDP) and Module Lifecycle Management System.
 
+[![CI](https://github.com/roshanjhawar23/CloudModX/actions/workflows/ci.yml/badge.svg)](https://github.com/roshanjhawar23/CloudModX/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11+-blue)
 ![React](https://img.shields.io/badge/React-18-61dafb)
 ![AWS Region](https://img.shields.io/badge/AWS%20Region-ap--south--1-orange)
@@ -170,7 +172,7 @@ Run Python and React directly on your machine, using Docker only for PostgreSQL.
    npm install
    npm run dev
    ```
-   Open `http://localhost:5173`. The Vite dev server proxies `/api` calls to `http://localhost:8000`.
+   Open `http://localhost:3000`. The Vite dev server proxies `/api` calls to `http://localhost:8000`.
 
 ### Configuration Reference
 
@@ -191,10 +193,25 @@ Run Python and React directly on your machine, using Docker only for PostgreSQL.
 The pytest suite covers database models, the seed script, module and version APIs, artifact uploads, deployment success/failure, rollback and health endpoints.
 
 ```bash
-# From the repository root, with backend dependencies installed
-python -m pytest backend/tests -v
+cd backend
+pip install -r requirements-dev.txt   # app dependencies + test client + linter
+ruff check .                           # lint
+python -m pytest tests -v              # 21 tests
 ```
-All 21 tests run against an isolated SQLite in-memory database with local artifact storage, so no PostgreSQL or AWS account is needed.
+The tests run against an isolated SQLite in-memory database with local artifact storage, so no PostgreSQL or AWS account is needed.
+
+### Continuous Integration
+Every push and pull request runs the [CI workflow](.github/workflows/ci.yml) on GitHub Actions:
+
+| Job | What it checks |
+|:---|:---|
+| Backend | `ruff` lint and the full pytest suite |
+| Frontend | `npm ci` and a production build |
+| Terraform | `terraform fmt -check`, `init` and `validate` (no AWS credentials needed) |
+| Docker Compose smoke test | Builds and starts the full stack, runs migrations and seed, and checks the API, the Nginx proxy and the UI |
+| Secret scan | Fails if `.env`, `terraform.tfvars`, state or key files are tracked, and scans the whole git history with gitleaks |
+
+Dependabot opens weekly pull requests for Python, npm and GitHub Actions updates, and monthly ones for Docker base images and the Terraform AWS provider.
 
 ### Frontend Production Build
 ```bash
@@ -208,7 +225,7 @@ npm run build
 ## 6. Troubleshooting
 
 - **Port 80 conflict on host**:
-  IIS, Apache or Skype may already use port 80. In `docker-compose.yml`, change the `frontend` port from `"80:80"` to `"3000:80"` and open `http://localhost:3000`.
+  IIS, Apache or Skype may already use port 80. In `docker-compose.yml`, change the `frontend` port from `"80:80"` to `"8080:80"` and open `http://localhost:8080`.
 - **Port 5433 conflict**:
   Change `"5433:5432"` under the `db` service in `docker-compose.yml`, and update the port in `backend/.env` to match.
 - **Health check shows "degraded"**:
@@ -340,3 +357,12 @@ This removes the EC2 instance, RDS instance (no final snapshot is kept), S3 buck
 - [Security & Isolation Model](docs/security.md)
 - [Demo Checklist & Verification Evidence](docs/demo-evidence.md)
 - [Terraform Infrastructure](infrastructure/terraform/README.md)
+- [Changelog](CHANGELOG.md)
+
+---
+
+## 10. Contributing, Security & License
+
+- **Contributing:** see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks to run before a pull request, and commit message style.
+- **Security:** please report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), not in public issues.
+- **License:** released under the [MIT License](LICENSE).
